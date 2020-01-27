@@ -24,7 +24,7 @@ task zip(type: Zip) {
 		include "views/**"
 	}
 	destinationDir(file("dist"))
-	baseName "trainSchedule"
+	baseName "nodejs-app"
 }
 
 //declare task dependencies

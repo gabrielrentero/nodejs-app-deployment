@@ -46,7 +46,7 @@ pipeline {
                 milestone(1)
                 kubernetesDeploy(
                     kubeconfigId: 'kubeconfig',
-                    configs: 'thoughtworks-kube.yml',
+                    configs: 'nodejs-app-kube.yml',
                     enableConfigSubstitution: true
                 )
             }
