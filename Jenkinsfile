@@ -3,6 +3,7 @@ pipeline {
     environment {
         DOCKER_IMAGE_NAME = "testsaccount/thoughtworks-task"
         STAGING_REPLICAS = 0
+        CANARY_REPLICAS = 0
     }
     stages {
         stage('Build') {
@@ -37,11 +38,13 @@ pipeline {
                 STAGING_REPLICAS = 1
             }
             steps {
-                kubernetesDeploy(
-                    kubeconfigId: 'kubeconfig',
-                    configs: 'nodejs-app-kube-staging.yml',
-                    enableConfigSubstitution: true
-                )
+                retry(count: 3) {
+                    kubernetesDeploy(
+                        kubeconfigId: 'kubeconfig',
+                        configs: 'nodejs-app-kube-staging.yml',
+                        enableConfigSubstitution: true
+                    )
+                }
             }
         }
         stage('Canary Deploy') {
@@ -49,21 +52,23 @@ pipeline {
                 CANARY_REPLICAS = 1
             }
             steps {
-                kubernetesDeploy(
-                    kubeconfigId: 'kubeconfig',
-                    configs: 'nodejs-app-kube-canary.yml',
-                    enableConfigSubstitution: true
-                )
+                retry(count: 3) {
+                    kubernetesDeploy(
+                        kubeconfigId: 'kubeconfig',
+                        configs: 'nodejs-app-kube-canary.yml',
+                        enableConfigSubstitution: true
+                    )
+                }
             }
         }
         stage('SmokeTest') {
             steps {
                 script {
-                    retries = 3
+                    retries = 5
 
                     for (def i = 0; i < retries; i++) {
                         try {
-                            response = call_url('http://172.16.50.11:8081/', 30, 10)
+                            response = call_url('http://172.16.50.11:8081/', 30, 30)
 
                             if (response.status == 200) {
                                 println "Congratulations!"
@@ -83,17 +88,9 @@ pipeline {
             }
         }
         stage('Deploy To Production') {
-            environment {
-                CANARY_REPLICAS = 0
-            }
             steps {
                 input 'It passed the smokeTest! Do you want to proceed to Production?'
                 milestone(1)
-                kubernetesDeploy(
-                    kubeconfigId: 'kubeconfig',
-                    configs: 'nodejs-app-kube-canary.yml',
-                    enableConfigSubstitution: true
-                )
                 kubernetesDeploy(
                     kubeconfigId: 'kubeconfig',
                     configs: 'nodejs-app-kube.yml',
@@ -107,6 +104,11 @@ pipeline {
             kubernetesDeploy(
                 kubeconfigId: 'kubeconfig',
                 configs: 'nodejs-app-kube-staging.yml',
+                enableConfigSubstitution: true
+            )
+            kubernetesDeploy(
+                kubeconfigId: 'kubeconfig',
+                configs: 'nodejs-app-kube-canary.yml',
                 enableConfigSubstitution: true
             )
         }
