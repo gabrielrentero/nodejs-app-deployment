@@ -37,36 +37,36 @@ pipeline {
                 }
             }
         }
-        // stage('CanaryDeploy') {
-        //     when {
-        //         branch 'master'
-        //     }
-        //     environment {
-        //         CANARY_REPLICAS = 1
-        //     }
-        //     steps {
-        //         kubernetesDeploy(
-        //             kubeconfigId: 'kubeconfig',
-        //             configs: 'nodejs-app-kube-canary.yml',
-        //             enableConfigSubstitution: true
-        //         )
-        //     }
-        // }
+        stage('CanaryDeploy') {
+            // when {
+            //     branch 'master'
+            // }
+            environment {
+                CANARY_REPLICAS = 1
+            }
+            steps {
+                kubernetesDeploy(
+                    kubeconfigId: 'kubeconfig',
+                    configs: 'nodejs-app-kube-canary.yml',
+                    enableConfigSubstitution: true
+                )
+            }
+        }
         stage('DeployToProduction') {
             // when {
             //     branch 'master'
             // }
-            // environment {
-            //     CANARY_REPLICAS = 0
-            // }
+            environment {
+                CANARY_REPLICAS = 0
+            }
             steps {
                 input 'Do you want to deploy to Production?'
                 milestone(1)
-                // kubernetesDeploy(
-                //     kubeconfigId: 'kubeconfig',
-                //     configs: 'nodejs-app-kube-canary.yml',
-                //     enableConfigSubstitution: true
-                // )
+                kubernetesDeploy(
+                    kubeconfigId: 'kubeconfig',
+                    configs: 'nodejs-app-kube-canary.yml',
+                    enableConfigSubstitution: true
+                )
                 kubernetesDeploy(
                     kubeconfigId: 'kubeconfig',
                     configs: 'nodejs-app-kube.yml',
