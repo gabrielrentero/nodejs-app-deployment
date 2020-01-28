@@ -23,7 +23,7 @@ spec:
   replicas: 2
   selector:
     matchLabels:
-      app: nodejs-app
+      app: nodejs-ap
   template:
     metadata:
       labels:
