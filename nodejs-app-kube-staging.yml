@@ -1,0 +1,39 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: nodejs-service-staging
+spec:
+  type: NodePort
+  selector:
+    app: nodejs-app
+    track: staging
+  ports:
+  - protocol: TCP
+    port: 8080
+    nodePort: 8082
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodejs-app-deployment-staging
+  labels:
+    app: nodejs-app
+spec:
+  replicas: $STAGING_REPLICAS
+  selector:
+    matchLabels:
+      app: nodejs-app
+      track: staging
+  template:
+    metadata:
+      labels:
+        app: nodejs-app
+        track: staging
+    spec:
+      containers:
+      - name: nodejs-app
+        image: $DOCKER_IMAGE_NAME:$BUILD_NUMBER
+        ports:
+        - containerPort: 8080
