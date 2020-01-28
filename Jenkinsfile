@@ -61,7 +61,7 @@ pipeline {
                 script {
                     sleep (time: 5)
                     def response = httpRequest (
-                        url: "http://172.16.50.10:8081/",
+                        url: "http://172.16.50.11:8081/",
                         timeout: 30
                     )
                     if (response.status != 200) {
