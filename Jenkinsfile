@@ -2,6 +2,7 @@ pipeline {
     agent any
     environment {
         DOCKER_IMAGE_NAME = "testsaccount/thoughtworks-task"
+        STAGING_REPLICAS = 0
     }
     stages {
         stage('Build') {
@@ -12,22 +13,16 @@ pipeline {
             }
         }
         stage('Build Docker Image') {
-            // when {
-            //     branch 'master'
-            // }
             steps {
                 script {
                     app = docker.build(DOCKER_IMAGE_NAME)
                     app.inside {
-                        sh 'echo Hello, World!'
+                        sh 'echo $(curl localhost:8080)'
                     }
                 }
             }
         }
         stage('Push Docker Image') {
-            // when {
-            //     branch 'master'
-            // }
             steps {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-user') {
@@ -37,10 +32,19 @@ pipeline {
                 }
             }
         }
-        stage('CanaryDeploy') {
-            // when {
-            //     branch 'master'
-            // }
+        stage('Deploy to Staging') {
+            environment {
+                STAGING_REPLICAS = 1
+            }
+            steps {
+                kubernetesDeploy(
+                    kubeconfigId: 'kubeconfig',
+                    configs: 'nodejs-app-kube-staging.yml',
+                    enableConfigSubstitution: true
+                )
+            }
+        }
+        stage('Canary Deploy') {
             environment {
                 CANARY_REPLICAS = 1
             }
@@ -52,15 +56,26 @@ pipeline {
                 )
             }
         }
-        stage('DeployToProduction') {
-            // when {
-            //     branch 'master'
-            // }
+        stage('SmokeTest') {
+            steps {
+                script {
+                    sleep (time: 5)
+                    def response = httpRequest (
+                        url: "http://$KUBE_MASTER_IP:8081/",
+                        timeout: 30
+                    )
+                    if (response.status != 200) {
+                        error("Smoke test against canary deployment failed.")
+                    }
+                }
+            }
+        }
+        stage('Deploy To Production') {
             environment {
                 CANARY_REPLICAS = 0
             }
             steps {
-                input 'Do you want to deploy to Production?'
+                input 'It passed the smokeTest! Do you want to proceed to Production?'
                 milestone(1)
                 kubernetesDeploy(
                     kubeconfigId: 'kubeconfig',
@@ -73,6 +88,15 @@ pipeline {
                     enableConfigSubstitution: true
                 )
             }
+        }
+    }
+    post {
+        cleanup {
+            kubernetesDeploy(
+                kubeconfigId: 'kubeconfig',
+                configs: 'nodejs-app-kube-staging.yml',
+                enableConfigSubstitution: true
+            )
         }
     }
 }
